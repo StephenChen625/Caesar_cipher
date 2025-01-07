@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>凯撒密码工具</title>
+    <style>
+        /* 基础样式 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fa;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 容器样式 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 标题样式 */
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #34495e;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* 模式选择按钮 */
+        .mode-selector {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .mode-selector button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            margin: 0 10px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .mode-selector button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        /* 模式内容容器 */
+        .mode {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 40px;
+        }
+
+        /* 表单元素 */
+        .mode div {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        label {
+            font-size: 16px;
+            margin-right: 15px;
+            width: 250px;
+            text-align: right;
+        }
+
+        input[type="number"],
+        input[type="text"] {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            width: 60%;
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus,
+        input[type="text"]:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
+        /* 字母表容器 */
+        .alphabet-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: auto;
+        }
+
+        .alphabet-row {
+            display: flex;
+            justify-content: center;
+            margin: 5px 0;
+        }
+
+        .alphabet-row div {
+            width: 35px;
+            height: 35px;
+            text-align: center;
+            line-height: 35px;
+            margin: 2px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #ecf0f1;
+            transition: background-color 0.3s;
+        }
+
+        .alphabet-row div.highlight {
+            color: white;
+            font-weight: bold;
+        }
+
+        /* 模式2 字母表列 */
+        .columns-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .column div {
+            width: 35px;
+            height: 35px;
+            text-align: center;
+            line-height: 35px;
+            margin: 2px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #ecf0f1;
+            transition: background-color 0.3s;
+        }
+
+        .column div.highlight-cipher {
+            background-color: #e67e22;
+            color: white;
+            font-weight: bold;
+        }
+
+        .column div.highlight-plain {
+            background-color: #27ae60;
+            color: white;
+            font-weight: bold;
+        }
+
+        .blank-column {
+            width: 35px;
+            height: 35px;
+            margin: 2px;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            label {
+                width: 100%;
+                text-align: left;
+                margin-bottom: 5px;
+            }
+
+            .mode div {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            input[type="number"],
+            input[type="text"] {
+                width: 100%;
+            }
+
+            .mode-selector button {
+                width: 100%;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>凯撒密码工具</h1>
+        <!-- <div class="mode-selector">
+            <button onclick="selectMode('mode1')">模式1 - 已知密钥</button>
+            <button onclick="selectMode('mode2')">模式2 - 未知密钥</button>
+        </div> -->
+
+        <!-- 模式1 -->
+        <div id="mode1" class="mode">
+            <h2>模式1 - 已知密钥</h2>
+            <div>
+                <label for="input1">输入明文或密文:</label>
+                <input type="text" id="input1" oninput="updateMode1()">
+            </div>
+            <div>
+                <label for="key1">密钥（负数表示向前移动）:</label>
+                <input type="number" id="key1" value="3" oninput="updateMode1()">
+            </div>
+            <div class="alphabet-container">
+                <div class="alphabet-row" id="plaintext-row">
+                    <!-- 明文字母表 -->
+                </div>
+                <div class="alphabet-row" id="ciphertext-row">
+                    <!-- 密文字母表 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 模式2 -->
+        <div id="mode2" class="mode">
+            <h2>模式2 - 未知密钥</h2>
+            <div>
+                <label for="ciphertext2">输入密文:</label>
+                <input type="text" id="ciphertext2" oninput="updateMode2Columns()">
+            </div>
+            <div>
+                <label for="key2">输入密钥（负数向后移动）:</label>
+                <input type="number" id="key2" value="0" oninput="updateMode2Highlight()">
+            </div>
+            <div class="columns-container" id="columns-container">
+                <!-- 字母表列 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 选择模式
+        function selectMode(modeId) {
+            document.querySelectorAll('.mode').forEach(mode => {
+                mode.classList.remove('active');
+            });
+            document.getElementById(modeId).classList.add('active');
+            // 清空输入框和显示
+            if(modeId === 'mode1') {
+                document.getElementById('input1').value = '';
+                document.getElementById('plaintext-row').innerHTML = '';
+                document.getElementById('ciphertext-row').innerHTML = '';
+            } else {
+                document.getElementById('ciphertext2').value = '';
+                document.getElementById('key2').value = 0;
+                document.getElementById('columns-container').innerHTML = '';
+            }
+        }
+
+        // 默认选择模式1
+        selectMode('mode1');
+
+        // 生成颜色数组
+        const colors = [
+            '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
+            '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe',
+            '#008080', '#e6beff', '#9A6324', '#fffac8', '#800000',
+            '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080',
+            '#ffffff', '#000000', '#FF5733', '#33FF57', '#3357FF'
+        ];
+
+        // 模式1 功能
+        function updateMode1() {
+            const key = parseInt(document.getElementById('key1').value) || 0;
+            const input = document.getElementById('input1').value.toUpperCase();
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+            const shifted = shiftAlphabet(alphabet, key);
+
+            // 显示明文字母表
+            const plaintextRow = document.getElementById('plaintext-row');
+            plaintextRow.innerHTML = '';
+            alphabet.forEach(char => {
+                const div = document.createElement('div');
+                div.textContent = char;
+                plaintextRow.appendChild(div);
+            });
+
+            // 显示密文字母表（固定A-Z）
+            const ciphertextRow = document.getElementById('ciphertext-row');
+            ciphertextRow.innerHTML = '';
+            alphabet.forEach(char => {
+                const div = document.createElement('div');
+                div.textContent = char;
+                ciphertextRow.appendChild(div);
+            });
+
+            // 清所有高亮
+            clearHighlights(plaintextRow);
+            clearHighlights(ciphertextRow);
+
+            // 用于记录颜色分配
+            const colorMap = {};
+            let colorIndex = 0;
+
+            // 高亮对应字母
+            for(let i=0; i<input.length; i++){
+                const char = input[i];
+                const plaintextIndex = alphabet.indexOf(char);
+                if(plaintextIndex !== -1) { // 输入的是明文
+                    const ciphertextChar = shifted[plaintextIndex];
+                    const ciphertextIndex = alphabet.indexOf(ciphertextChar);
+                    if(ciphertextIndex !== -1){
+                        if(!colorMap[plaintextIndex]){
+                            colorMap[plaintextIndex] = colors[colorIndex % colors.length];
+                            colorIndex++;
+                        }
+                        const color = colorMap[plaintextIndex];
+                        plaintextRow.children[plaintextIndex].style.backgroundColor = color;
+                        ciphertextRow.children[ciphertextIndex].style.backgroundColor = color;
+                    }
+                } else {
+                    const ciphertextIndex = alphabet.indexOf(char);
+                    if(ciphertextIndex !== -1){
+                        // 输入的是密文，找到对应的明文字母
+                        const plaintextIndex = (ciphertextIndex - key + 26) % 26;
+                        if(ciphertextIndex >=0 && ciphertextIndex < alphabet.length){
+                            if(!colorMap[ciphertextIndex]){
+                                colorMap[ciphertextIndex] = colors[colorIndex % colors.length];
+                                colorIndex++;
+                            }
+                            const color = colorMap[ciphertextIndex];
+                            plaintextRow.children[plaintextIndex].style.backgroundColor = color;
+                            ciphertextRow.children[ciphertextIndex].style.backgroundColor = color;
+                        }
+                    }
+                }
+            }
+        }
+
+        function shiftAlphabet(alphabet, key) {
+            const shifted = [];
+            const mod = 26;
+            const normalizedKey = ((key % mod) + mod) % mod; // Handle negative keys
+            for(let i=0; i<alphabet.length; i++){
+                shifted.push(alphabet[(i + normalizedKey) % 26]);
+            }
+            return shifted;
+        }
+
+        function clearHighlights(row) {
+            Array.from(row.children).forEach(child => {
+                child.style.backgroundColor = '';
+            });
+        }
+
+        // 模式2 功能
+        function updateMode2Columns() {
+            const ciphertext = document.getElementById('ciphertext2').value.toUpperCase();
+            const container = document.getElementById('columns-container');
+            container.innerHTML = '';
+            const letters = ciphertext.split('');
+            letters.forEach((char, index) => {
+                if(char === ' ') {
+                    // 插入空白列
+                    const blankDiv = document.createElement('div');
+                    blankDiv.classList.add('blank-column');
+                    container.appendChild(blankDiv);
+                } else if(/[A-Z]/.test(char)){
+                    const columnDiv = document.createElement('div');
+                    columnDiv.classList.add('column');
+                    const alphabet = generateColumn(char);
+                    alphabet.forEach(letter => {
+                        const letterDiv = document.createElement('div');
+                        letterDiv.textContent = letter;
+                        columnDiv.appendChild(letterDiv);
+                    });
+                    container.appendChild(columnDiv);
+                }
+            });
+            // 高亮密文字母在第8行
+            highlightMode2Ciphertext();
+            // 更新明文高亮
+            updateMode2Highlight();
+        }
+
+        function generateColumn(cipherChar) {
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            // 密文字母位于第8行（索引7），所以起始点需要使cipherChar位于第8行
+            const cipherIndex = alphabet.indexOf(cipherChar);
+            if(cipherIndex === -1) return []; // 非法字符
+            const startIndex = (cipherIndex - 7 + 26) % 26; // 使cipherChar位于第8行
+            const column = [];
+            for(let i=0; i<26; i++){
+                const index = (startIndex + i) % 26;
+                column.push(alphabet[index]);
+            }
+            return column;
+        }
+
+        function highlightMode2Ciphertext() {
+            const columns = document.querySelectorAll('.column');
+            columns.forEach(column => {
+                if(column.children[7]){
+                    column.children[7].classList.add('highlight-cipher');
+                }
+            });
+        }
+
+        function updateMode2Highlight() {
+            const key = parseInt(document.getElementById('key2').value*(-1)) || 0;
+            const columns = document.querySelectorAll('.column');
+            columns.forEach(column => {
+                if(column.children[7]){
+                    // 清除之前的明文高亮
+                    column.querySelectorAll('div.highlight-plain').forEach(div => div.classList.remove('highlight-plain'));
+                    // 计算明文字母位置
+                    let plainIndex = (7 + key) % 26;
+                    if(plainIndex < 0){
+                        plainIndex += 26;
+                    }
+                    if(column.children[plainIndex]){
+                        column.children[plainIndex].classList.add('highlight-plain');
+                    }
+                }
+            });
+        }
+
+        // 优化：在模式2，输入密文或密钥时都更新高亮
+        document.getElementById('ciphertext2').addEventListener('input', () => {
+            updateMode2Columns();
+        });
+
+        document.getElementById('key2').addEventListener('input', () => {
+            updateMode2Highlight();
+        });
+    </script>
+</body>
+</html>
