@@ -33,12 +33,11 @@
             text-align: center;
         }
 
-        /* 模式选择按钮 */
+        /* 模式选择按钮（如有需要可保留，这里先注释掉）
         .mode-selector {
             text-align: center;
             margin-bottom: 30px;
         }
-
         .mode-selector button {
             background-color: #3498db;
             color: white;
@@ -50,11 +49,11 @@
             font-size: 16px;
             transition: background-color 0.3s, transform 0.3s;
         }
-
         .mode-selector button:hover {
             background-color: #2980b9;
             transform: translateY(-2px);
         }
+        */
 
         /* 模式内容容器 */
         .mode {
@@ -65,9 +64,14 @@
             margin-bottom: 40px;
         }
 
-        /* 表单元素 */
+        /* 为了避免父div影响子元素滚动，不再默认使用 display:flex; 居中所有.
+           只保留 margin-bottom: 20px; 等基础样式 */
         .mode div {
             margin-bottom: 20px;
+        }
+
+        /* 如果某行需要水平排列并居中，可以加这个类 .form-row */
+        .form-row {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -96,20 +100,18 @@
             outline: none;
         }
 
-        /* 字母表容器 */
+        /* 字母表容器：模式1可在这里显示明/密字母表 */
         .alphabet-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            overflow-x: auto;
+            overflow-x: auto; /* 如需横向滚动 */
         }
-
         .alphabet-row {
             display: flex;
             justify-content: center;
             margin: 5px 0;
         }
-
         .alphabet-row div {
             width: 35px;
             height: 35px;
@@ -121,26 +123,35 @@
             background-color: #ecf0f1;
             transition: background-color 0.3s;
         }
-
         .alphabet-row div.highlight {
             color: white;
             font-weight: bold;
         }
 
-        /* 模式2 字母表列 */
+        /* 模式2：使用一个wrapper + container来确保可滚动 */
+        .columns-wrapper {
+            /* 让整个区域可以根据内容自由横向滚动 */
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
         .columns-container {
-            display: flex;
+            /* 用 inline-flex 避免被挤换行，保证所有列在一行内 */
+            display: inline-flex;
             gap: 15px;
             margin-top: 20px;
-            overflow-x: auto;
             padding-bottom: 10px;
-            white-space: nowrap; /* 确保长文本不换行 */
+            white-space: nowrap;
+            /* 去除任何居中对齐，确保可正常从最左开始 */
+            justify-content: flex-start;
+            align-items: flex-start;
         }
 
         .column {
             display: flex;
             flex-direction: column;
             align-items: center;
+            flex-shrink: 0; /* 防止列被挤压 */
         }
 
         .column div {
@@ -191,7 +202,8 @@
                 margin-bottom: 5px;
             }
 
-            .mode div {
+            /* 移动端让表单竖排 */
+            .form-row {
                 flex-direction: column;
                 align-items: flex-start;
             }
@@ -199,11 +211,6 @@
             input[type="number"],
             input[type="text"] {
                 width: 100%;
-            }
-
-            .mode-selector button {
-                width: 100%;
-                margin: 10px 0;
             }
         }
     </style>
@@ -215,11 +222,12 @@
         <!-- 模式1 -->
         <div id="mode1" class="mode">
             <h2>模式1 - 已知密钥</h2>
-            <div>
+            <!-- 使用 .form-row 来保证同行居中 -->
+            <div class="form-row">
                 <label for="input1">输入明文或密文:</label>
                 <input type="text" id="input1" oninput="updateMode1()">
             </div>
-            <div>
+            <div class="form-row">
                 <label for="key1">密钥（负数表示向前移动）:</label>
                 <input type="number" id="key1" value="3" oninput="updateMode1()">
             </div>
@@ -233,15 +241,19 @@
         <!-- 模式2 -->
         <div id="mode2" class="mode">
             <h2>模式2 - 未知密钥</h2>
-            <div>
+            <div class="form-row">
                 <label for="ciphertext2">输入密文:</label>
                 <input type="text" id="ciphertext2" oninput="updateMode2Columns()">
             </div>
-            <div>
+            <div class="form-row">
                 <label for="key2">输入密钥（负数向后移动）:</label>
                 <input type="number" id="key2" value="0" oninput="updateMode2Highlight()">
             </div>
-            <div class="columns-container" id="columns-container"></div>
+            <!-- 外层 wrapper，负责横向滚动 -->
+            <div class="columns-wrapper">
+                <!-- 内层 container，横向排布所有列 -->
+                <div class="columns-container" id="columns-container"></div>
+            </div>
         </div>
     </div>
 
@@ -255,7 +267,9 @@
             '#ffffff', '#000000', '#FF5733', '#33FF57', '#3357FF'
         ];
 
+        // ========================
         // 模式1 功能
+        // ========================
         function updateMode1() {
             const key = parseInt(document.getElementById('key1').value) || 0;
             const input = document.getElementById('input1').value.toUpperCase();
@@ -267,7 +281,7 @@
             updateAlphabetRow('ciphertext-row', alphabet);
 
             // 高亮对应字母
-            highlightAlphabet(input, alphabet, shifted, 'plaintext-row', 'ciphertext-row');
+            highlightAlphabet(input, alphabet, shifted, 'plaintext-row', 'ciphertext-row', key);
 
             // 输出编码结果
             const result = input.split('').map(char => {
@@ -297,7 +311,7 @@
             });
         }
 
-        function highlightAlphabet(input, alphabet, shifted, plainRowId, cipherRowId) {
+        function highlightAlphabet(input, alphabet, shifted, plainRowId, cipherRowId, key) {
             const plaintextRow = document.getElementById(plainRowId);
             const ciphertextRow = document.getElementById(cipherRowId);
             clearHighlights(plaintextRow);
@@ -310,6 +324,7 @@
                 const char = input[i];
                 const plaintextIndex = alphabet.indexOf(char);
                 if (plaintextIndex !== -1) {
+                    // 有效字母：找出加密后的字母
                     const ciphertextChar = shifted[plaintextIndex];
                     const ciphertextIndex = alphabet.indexOf(ciphertextChar);
                     if (ciphertextIndex !== -1) {
@@ -322,6 +337,7 @@
                         ciphertextRow.children[ciphertextIndex].style.backgroundColor = color;
                     }
                 } else {
+                    // 非字母字符，再判断是否可能是大写字母（此处可视需要自行处理）
                     const ciphertextIndex = alphabet.indexOf(char);
                     if (ciphertextIndex !== -1) {
                         const plaintextIndex = (ciphertextIndex - key + 26) % 26;
@@ -343,18 +359,23 @@
             });
         }
 
+        // ========================
         // 模式2 功能
+        // ========================
         function updateMode2Columns() {
             const ciphertext = document.getElementById('ciphertext2').value.toUpperCase();
             const container = document.getElementById('columns-container');
             container.innerHTML = '';
             const letters = ciphertext.split('');
-            letters.forEach((char, index) => {
+
+            letters.forEach((char) => {
                 if (char === ' ') {
+                    // 空格就生成一个空白格，便于分隔
                     const blankDiv = document.createElement('div');
                     blankDiv.classList.add('blank-column');
                     container.appendChild(blankDiv);
                 } else if (/[A-Z]/.test(char)) {
+                    // 只对A-Z的字母生成对应列
                     const columnDiv = document.createElement('div');
                     columnDiv.classList.add('column');
                     const alphabet = generateColumn(char);
@@ -366,14 +387,22 @@
                     container.appendChild(columnDiv);
                 }
             });
+
+            // 先高亮密文字母
             highlightMode2Ciphertext();
+            // 再根据key高亮对应的“明文字母”
             updateMode2Highlight();
+
+            // 保证滚动条一开始在最左
+            const wrapper = document.querySelector('.columns-wrapper');
+            wrapper.scrollLeft = 0;
         }
 
         function generateColumn(cipherChar) {
             const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             const cipherIndex = alphabet.indexOf(cipherChar);
             if (cipherIndex === -1) return [];
+            // 让密文字母位于列中第8行(索引7)的位置
             const startIndex = (cipherIndex - 7 + 26) % 26;
             const column = [];
             for (let i = 0; i < 26; i++) {
@@ -386,6 +415,7 @@
         function highlightMode2Ciphertext() {
             const columns = document.querySelectorAll('.column');
             columns.forEach(column => {
+                // 第8个格（index=7）是密文字母
                 if (column.children[7]) {
                     column.children[7].classList.add('highlight-cipher');
                 }
@@ -393,13 +423,20 @@
         }
 
         function updateMode2Highlight() {
+            // key2: 负数表示向后移动 => 实际明文字母与第8个格（密文字母）之间相差 -key
             const key = parseInt(document.getElementById('key2').value * (-1)) || 0;
             const columns = document.querySelectorAll('.column');
+
             columns.forEach(column => {
+                // 移除原有高亮
+                column.querySelectorAll('div.highlight-plain').forEach(div => div.classList.remove('highlight-plain'));
+
                 if (column.children[7]) {
-                    column.querySelectorAll('div.highlight-plain').forEach(div => div.classList.remove('highlight-plain'));
+                    // 计算明文字母所在位置
                     let plainIndex = (7 + key) % 26;
-                    if (plainIndex < 0) plainIndex += 26;
+                    if (plainIndex < 0) {
+                        plainIndex += 26;
+                    }
                     if (column.children[plainIndex]) {
                         column.children[plainIndex].classList.add('highlight-plain');
                     }
