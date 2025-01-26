@@ -134,6 +134,7 @@
             margin-top: 20px;
             overflow-x: auto;
             padding-bottom: 10px;
+            white-space: nowrap; /* 确保长文本不换行 */
         }
 
         .column {
@@ -172,6 +173,16 @@
             margin: 2px;
         }
 
+        /* 结果输出区域 */
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            font-size: 16px;
+            text-align: center;
+        }
+
         /* 响应式设计 */
         @media (max-width: 768px) {
             label {
@@ -200,10 +211,6 @@
 <body>
     <div class="container">
         <h1>凯撒密码工具</h1>
-        <!-- <div class="mode-selector">
-            <button onclick="selectMode('mode1')">模式1 - 已知密钥</button>
-            <button onclick="selectMode('mode2')">模式2 - 未知密钥</button>
-        </div> -->
 
         <!-- 模式1 -->
         <div id="mode1" class="mode">
@@ -217,13 +224,10 @@
                 <input type="number" id="key1" value="3" oninput="updateMode1()">
             </div>
             <div class="alphabet-container">
-                <div class="alphabet-row" id="plaintext-row">
-                    <!-- 明文字母表 -->
-                </div>
-                <div class="alphabet-row" id="ciphertext-row">
-                    <!-- 密文字母表 -->
-                </div>
+                <div class="alphabet-row" id="plaintext-row"></div>
+                <div class="alphabet-row" id="ciphertext-row"></div>
             </div>
+            <div class="result" id="result1"></div> <!-- 编码结果输出区域 -->
         </div>
 
         <!-- 模式2 -->
@@ -237,35 +241,12 @@
                 <label for="key2">输入密钥（负数向后移动）:</label>
                 <input type="number" id="key2" value="0" oninput="updateMode2Highlight()">
             </div>
-            <div class="columns-container" id="columns-container">
-                <!-- 字母表列 -->
-            </div>
+            <div class="columns-container" id="columns-container"></div>
         </div>
     </div>
 
     <script>
-        // 选择模式
-        function selectMode(modeId) {
-            document.querySelectorAll('.mode').forEach(mode => {
-                mode.classList.remove('active');
-            });
-            document.getElementById(modeId).classList.add('active');
-            // 清空输入框和显示
-            if(modeId === 'mode1') {
-                document.getElementById('input1').value = '';
-                document.getElementById('plaintext-row').innerHTML = '';
-                document.getElementById('ciphertext-row').innerHTML = '';
-            } else {
-                document.getElementById('ciphertext2').value = '';
-                document.getElementById('key2').value = 0;
-                document.getElementById('columns-container').innerHTML = '';
-            }
-        }
-
-        // 默认选择模式1
-        selectMode('mode1');
-
-        // 生成颜色数组
+        // 颜色数组
         const colors = [
             '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
             '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe',
@@ -281,41 +262,58 @@
             const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
             const shifted = shiftAlphabet(alphabet, key);
 
-            // 显示明文字母表
-            const plaintextRow = document.getElementById('plaintext-row');
-            plaintextRow.innerHTML = '';
+            // 更新字母表
+            updateAlphabetRow('plaintext-row', alphabet);
+            updateAlphabetRow('ciphertext-row', alphabet);
+
+            // 高亮对应字母
+            highlightAlphabet(input, alphabet, shifted, 'plaintext-row', 'ciphertext-row');
+
+            // 输出编码结果
+            const result = input.split('').map(char => {
+                const index = alphabet.indexOf(char);
+                return index !== -1 ? shifted[index] : char;
+            }).join('');
+            document.getElementById('result1').textContent = `编码结果: ${result}`;
+        }
+
+        function shiftAlphabet(alphabet, key) {
+            const shifted = [];
+            const mod = 26;
+            const normalizedKey = ((key % mod) + mod) % mod; // 处理负数
+            for (let i = 0; i < alphabet.length; i++) {
+                shifted.push(alphabet[(i + normalizedKey) % 26]);
+            }
+            return shifted;
+        }
+
+        function updateAlphabetRow(rowId, alphabet) {
+            const row = document.getElementById(rowId);
+            row.innerHTML = '';
             alphabet.forEach(char => {
                 const div = document.createElement('div');
                 div.textContent = char;
-                plaintextRow.appendChild(div);
+                row.appendChild(div);
             });
+        }
 
-            // 显示密文字母表（固定A-Z）
-            const ciphertextRow = document.getElementById('ciphertext-row');
-            ciphertextRow.innerHTML = '';
-            alphabet.forEach(char => {
-                const div = document.createElement('div');
-                div.textContent = char;
-                ciphertextRow.appendChild(div);
-            });
-
-            // 清所有高亮
+        function highlightAlphabet(input, alphabet, shifted, plainRowId, cipherRowId) {
+            const plaintextRow = document.getElementById(plainRowId);
+            const ciphertextRow = document.getElementById(cipherRowId);
             clearHighlights(plaintextRow);
             clearHighlights(ciphertextRow);
 
-            // 用于记录颜色分配
             const colorMap = {};
             let colorIndex = 0;
 
-            // 高亮对应字母
-            for(let i=0; i<input.length; i++){
+            for (let i = 0; i < input.length; i++) {
                 const char = input[i];
                 const plaintextIndex = alphabet.indexOf(char);
-                if(plaintextIndex !== -1) { // 输入的是明文
+                if (plaintextIndex !== -1) {
                     const ciphertextChar = shifted[plaintextIndex];
                     const ciphertextIndex = alphabet.indexOf(ciphertextChar);
-                    if(ciphertextIndex !== -1){
-                        if(!colorMap[plaintextIndex]){
+                    if (ciphertextIndex !== -1) {
+                        if (!colorMap[plaintextIndex]) {
                             colorMap[plaintextIndex] = colors[colorIndex % colors.length];
                             colorIndex++;
                         }
@@ -325,31 +323,18 @@
                     }
                 } else {
                     const ciphertextIndex = alphabet.indexOf(char);
-                    if(ciphertextIndex !== -1){
-                        // 输入的是密文，找到对应的明文字母
+                    if (ciphertextIndex !== -1) {
                         const plaintextIndex = (ciphertextIndex - key + 26) % 26;
-                        if(ciphertextIndex >=0 && ciphertextIndex < alphabet.length){
-                            if(!colorMap[ciphertextIndex]){
-                                colorMap[ciphertextIndex] = colors[colorIndex % colors.length];
-                                colorIndex++;
-                            }
-                            const color = colorMap[ciphertextIndex];
-                            plaintextRow.children[plaintextIndex].style.backgroundColor = color;
-                            ciphertextRow.children[ciphertextIndex].style.backgroundColor = color;
+                        if (!colorMap[ciphertextIndex]) {
+                            colorMap[ciphertextIndex] = colors[colorIndex % colors.length];
+                            colorIndex++;
                         }
+                        const color = colorMap[ciphertextIndex];
+                        plaintextRow.children[plaintextIndex].style.backgroundColor = color;
+                        ciphertextRow.children[ciphertextIndex].style.backgroundColor = color;
                     }
                 }
             }
-        }
-
-        function shiftAlphabet(alphabet, key) {
-            const shifted = [];
-            const mod = 26;
-            const normalizedKey = ((key % mod) + mod) % mod; // Handle negative keys
-            for(let i=0; i<alphabet.length; i++){
-                shifted.push(alphabet[(i + normalizedKey) % 26]);
-            }
-            return shifted;
         }
 
         function clearHighlights(row) {
@@ -365,12 +350,11 @@
             container.innerHTML = '';
             const letters = ciphertext.split('');
             letters.forEach((char, index) => {
-                if(char === ' ') {
-                    // 插入空白列
+                if (char === ' ') {
                     const blankDiv = document.createElement('div');
                     blankDiv.classList.add('blank-column');
                     container.appendChild(blankDiv);
-                } else if(/[A-Z]/.test(char)){
+                } else if (/[A-Z]/.test(char)) {
                     const columnDiv = document.createElement('div');
                     columnDiv.classList.add('column');
                     const alphabet = generateColumn(char);
@@ -382,20 +366,17 @@
                     container.appendChild(columnDiv);
                 }
             });
-            // 高亮密文字母在第8行
             highlightMode2Ciphertext();
-            // 更新明文高亮
             updateMode2Highlight();
         }
 
         function generateColumn(cipherChar) {
             const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            // 密文字母位于第8行（索引7），所以起始点需要使cipherChar位于第8行
             const cipherIndex = alphabet.indexOf(cipherChar);
-            if(cipherIndex === -1) return []; // 非法字符
-            const startIndex = (cipherIndex - 7 + 26) % 26; // 使cipherChar位于第8行
+            if (cipherIndex === -1) return [];
+            const startIndex = (cipherIndex - 7 + 26) % 26;
             const column = [];
-            for(let i=0; i<26; i++){
+            for (let i = 0; i < 26; i++) {
                 const index = (startIndex + i) % 26;
                 column.push(alphabet[index]);
             }
@@ -405,39 +386,26 @@
         function highlightMode2Ciphertext() {
             const columns = document.querySelectorAll('.column');
             columns.forEach(column => {
-                if(column.children[7]){
+                if (column.children[7]) {
                     column.children[7].classList.add('highlight-cipher');
                 }
             });
         }
 
         function updateMode2Highlight() {
-            const key = parseInt(document.getElementById('key2').value*(-1)) || 0;
+            const key = parseInt(document.getElementById('key2').value * (-1)) || 0;
             const columns = document.querySelectorAll('.column');
             columns.forEach(column => {
-                if(column.children[7]){
-                    // 清除之前的明文高亮
+                if (column.children[7]) {
                     column.querySelectorAll('div.highlight-plain').forEach(div => div.classList.remove('highlight-plain'));
-                    // 计算明文字母位置
                     let plainIndex = (7 + key) % 26;
-                    if(plainIndex < 0){
-                        plainIndex += 26;
-                    }
-                    if(column.children[plainIndex]){
+                    if (plainIndex < 0) plainIndex += 26;
+                    if (column.children[plainIndex]) {
                         column.children[plainIndex].classList.add('highlight-plain');
                     }
                 }
             });
         }
-
-        // 优化：在模式2，输入密文或密钥时都更新高亮
-        document.getElementById('ciphertext2').addEventListener('input', () => {
-            updateMode2Columns();
-        });
-
-        document.getElementById('key2').addEventListener('input', () => {
-            updateMode2Highlight();
-        });
     </script>
 </body>
 </html>
